@@ -1,0 +1,9 @@
+Compiling with YASM
+
+// for 32 bits
+yasm -a x86 -f win32 WoW64Shellcode.asm
+ld -m i386pe WoW64Shellcode.obj
+
+// for 64 bits
+yasm -a x86 -f win64 x64_Load_custom_dll_shellcode.asm
+ld x64_Load_custom_dll_shellcode.obj -o x64_Load_custom_dll_shellcode.exe
